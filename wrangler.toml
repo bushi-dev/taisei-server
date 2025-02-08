@@ -1,0 +1,11 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "my-cloudflare-worker"
+main = "src/index.ts"
+compatibility_date = "2025-02-08"
+
+[dev]
+port = 4300
+
+[[kv_namespaces]]
+binding = "mydb"
+id = "fdd51a117f784c8487a43abed0d9fd34"

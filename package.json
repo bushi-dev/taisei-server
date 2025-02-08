@@ -5,7 +5,9 @@
     "deploy": "wrangler deploy --minify"
   },
   "dependencies": {
-    "hono": "^4.6.20"
+    "express": "^4.21.2",
+    "hono": "^4.6.20",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",

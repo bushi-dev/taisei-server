@@ -8,5 +8,8 @@ app.get("/", (c) => {
 app.get("/test", (c) => {
   return c.json({ test: "成功" });
 });
+app.get("/add", (c) => {
+  return c.json({ test: "成功" });
+});
 
 export default app;

@@ -1,39 +1,16 @@
 import { Hono } from "hono";
+import { getIp } from "./utils/ip";
+
+interface TakaraData {
+  ip: string;
+  takara: number[];
+}
+
+interface DbData {
+  value: TakaraData[];
+}
 
 const app = new Hono<{ Bindings: { mydb: KVNamespace } }>();
-
-app.post("/set", async (c) => {
-  const kv = c.env.mydb;
-  if (!kv) {
-    return c.json({ error: "KV namespace is not bound" }, 500);
-  }
-
-  const data = await c.req.json();
-  const { key, value } = data;
-
-  if (!key || !value) {
-    return c.json({ error: "Key and value are required" }, 400);
-  }
-
-  await kv.put(key, JSON.stringify(value));
-  return c.text("Value set!");
-});
-
-app.get("/get/:key", async (c) => {
-  const kv = c.env.mydb;
-  if (!kv) {
-    return c.json({ error: "KV namespace is not bound" }, 500);
-  }
-
-  const key = c.req.param("key");
-  const value = await kv.get(key);
-
-  if (!value) {
-    return c.json({ error: "Key not found" }, 404);
-  }
-
-  return c.json({ key, value: JSON.parse(value) });
-});
 
 app.get("/list", async (c) => {
   const kv = c.env.mydb;
@@ -41,39 +18,88 @@ app.get("/list", async (c) => {
     return c.json({ error: "KV namespace is not bound" }, 500);
   }
 
-  const { keys } = await kv.list();
-  const results = [];
+  const ip = getIp(c);
+  const key = "fdd51a117f784c8487a43abed0d9fd34";
+  const value = await kv.get(key);
 
-  for (const { name } of keys) {
-    const value = await kv.get(name);
-    if (value) {
-      results.push({ key: name, value: JSON.parse(value) });
-    }
+  if (!value) {
+    return c.json([]);
   }
 
-  return c.json(results);
-});
-app.get("/", (c) => {
-  return c.json({ test: "成功" });
+  const parsed = JSON.parse(value);
+  const data = {
+    value: Array.isArray(parsed.value) ? parsed.value : [],
+  } as DbData;
+  const ipData = data.value.find((item) => item.ip === ip);
+  return c.json(ipData?.takara || []);
 });
 
-//TODO {"key":"fdd51a117f784c8487a43abed0d9fd34","value":"test2"}で送りたい
-// fdd51a117f784c8487a43abed0d9fd34は.envから取得
-app.get("/add", async (c) => {
+app.get("/listAll", async (c) => {
   const kv = c.env.mydb;
   if (!kv) {
     return c.json({ error: "KV namespace is not bound" }, 500);
   }
 
-  const data = { key: "fdd51a117f784c8487a43abed0d9fd34", value: "test2" };
-  const { key, value } = data;
+  const key = "fdd51a117f784c8487a43abed0d9fd34";
+  const value = await kv.get(key);
 
-  if (!key || !value) {
-    return c.json({ error: "Key and value are required" }, 400);
+  if (!value) {
+    return c.json({ value: [] });
   }
 
-  await kv.put(key, JSON.stringify(value));
-  return c.text("Value set!");
+  const parsed = JSON.parse(value);
+  const data = {
+    value: Array.isArray(parsed.value) ? parsed.value : [],
+  } as DbData;
+  return c.json(data);
+});
+
+app.get("/", (c) => {
+  return c.json({ test: "成功" });
+});
+
+app.get("/deleteAll", async (c) => {
+  const kv = c.env.mydb;
+  if (!kv) {
+    return c.json({ error: "KV namespace is not bound" }, 500);
+  }
+
+  const key = "fdd51a117f784c8487a43abed0d9fd34";
+  await kv.put(key, JSON.stringify({ value: [] }));
+  return c.json({ message: "Success" });
+});
+
+app.get("/add/:id", async (c) => {
+  const kv = c.env.mydb;
+  if (!kv) {
+    return c.json({ error: "KV namespace is not bound" }, 500);
+  }
+
+  const takaraNo = parseInt(c.req.param("id"));
+  const takara = [takaraNo];
+
+  const ip = getIp(c);
+  const key = "fdd51a117f784c8487a43abed0d9fd34";
+  const existingValue = await kv.get(key);
+  let data: DbData = { value: [] };
+
+  if (existingValue) {
+    const parsed = JSON.parse(existingValue);
+    data = { value: Array.isArray(parsed.value) ? parsed.value : [] };
+    const index = data.value.findIndex((item) => item.ip === ip);
+    if (index >= 0) {
+      data.value[index].takara = [
+        ...new Set([...data.value[index].takara, ...takara]),
+      ];
+    } else {
+      data.value.push({ ip, takara });
+    }
+  } else {
+    data.value.push({ ip, takara });
+  }
+
+  await kv.put(key, JSON.stringify(data));
+  return c.json({ message: "Success" });
 });
 
 export default app;

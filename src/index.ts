@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getIp } from "./utils/ip";
+import { cors } from "hono/cors";
 
 interface TakaraData {
   ip: string;
@@ -101,5 +102,17 @@ app.get("/add/:id", async (c) => {
   await kv.put(key, JSON.stringify(data));
   return c.json({ message: "Success" });
 });
+
+app.use(
+  "/graphql",
+  cors({
+    origin: ["https://taisei.pages.dev", "http://localhost:5173"], // 本番と開発環境のURL
+    allowHeaders: ["X-Custom-Header", "Upgrade-Insecure-Requests"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
+    maxAge: 600,
+    credentials: true,
+  })
+);
 
 export default app;

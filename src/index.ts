@@ -13,6 +13,18 @@ interface DbData {
 
 const app = new Hono<{ Bindings: { mydb: KVNamespace } }>();
 
+app.use(
+  "*",
+  cors({
+    origin: ["https://taisei.pages.dev", "http://localhost:5173"], // 本番と開発環境のURL
+    allowHeaders: ["X-Custom-Header", "Upgrade-Insecure-Requests"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
+    maxAge: 600,
+    credentials: true,
+  })
+);
+
 app.get("/list", async (c) => {
   const kv = c.env.mydb;
   if (!kv) {
@@ -102,17 +114,5 @@ app.get("/add/:id", async (c) => {
   await kv.put(key, JSON.stringify(data));
   return c.json({ message: "Success" });
 });
-
-app.use(
-  "/graphql",
-  cors({
-    origin: ["https://taisei.pages.dev", "http://localhost:5173"], // 本番と開発環境のURL
-    allowHeaders: ["X-Custom-Header", "Upgrade-Insecure-Requests"],
-    allowMethods: ["POST", "GET", "OPTIONS"],
-    exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
-    maxAge: 600,
-    credentials: true,
-  })
-);
 
 export default app;

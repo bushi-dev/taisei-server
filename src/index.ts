@@ -11,7 +11,7 @@ interface DbData {
   value: TakaraData[];
 }
 
-const app = new Hono<{ Bindings: { mydb: KVNamespace } }>();
+const app = new Hono<{ Bindings: { mydb: KVNamespace; DB: D1Database } }>();
 
 app.use(
   cors({
@@ -21,7 +21,7 @@ app.use(
       "X-Custom-Header",
       "Upgrade-Insecure-Requests",
       "Content-Type", // 追加
-      "Authorization", // 追加（必要なら）
+      "Authorization", // 追加(必要なら)
     ],
     exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
     credentials: true, // `credentials: "include"` を使うために必要
@@ -73,6 +73,56 @@ app.get("/listAll", async (c) => {
     value: Array.isArray(parsed.value) ? parsed.value : [],
   } as DbData;
   return c.json(data);
+});
+
+app.get("/test", async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: "D1 database is not bound" }, 500);
+  }
+  const ip = getIp(c);
+  const { results } = await db
+    .prepare("SELECT ip,takara FROM TAKARA WHERE ip = ?")
+    .bind(ip)
+    .all();
+  return c.json(results);
+});
+
+app.get("/add-db/:id", async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: "D1 database is not bound" }, 500);
+  }
+  const ip = getIp(c);
+
+  //既存データ
+  const { results: existing } = await db
+    .prepare("SELECT ip,takara FROM TAKARA WHERE ip = ?")
+    .bind(ip)
+    .all();
+
+  //existingとtakaraNoをマージする
+  const takaraNoStr = c.req.param("id");
+  const takaraNo = parseInt(takaraNoStr);
+  if (isNaN(takaraNo)) {
+    return c.json({ error: "Invalid takaraNo" }, 400);
+  }
+  let takara: number[] = [takaraNo];
+
+  if (existing && existing.length > 0) {
+    const existingTakara = Array.isArray(
+      existing[0].takara as unknown as string[]
+    )
+      ? (existing[0].takara as number[])
+      : (existing[0].takara as string).split(",").map(Number);
+    takara = [...new Set([...existingTakara, takaraNo])];
+  }
+
+  const { results } = await db
+    .prepare("INSERT OR REPLACE INTO TAKARA (ip, takara) VALUES (?, ?)")
+    .bind(ip, takara.toString())
+    .all();
+  return c.json(results);
 });
 
 app.get("/", (c) => {

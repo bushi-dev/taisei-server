@@ -9,3 +9,8 @@ port = 4300
 [[kv_namespaces]]
 binding = "mydb"
 id = "fdd51a117f784c8487a43abed0d9fd34"
+
+[[d1_databases]]
+binding = "DB"  # ここで指定した名前でアクセスする
+database_name = "test"
+database_id = "0118f334-a4bc-41bd-8880-01871116bb22"

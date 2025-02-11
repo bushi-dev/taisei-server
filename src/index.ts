@@ -14,16 +14,24 @@ interface DbData {
 const app = new Hono<{ Bindings: { mydb: KVNamespace } }>();
 
 app.use(
-  "*",
   cors({
-    origin: ["https://taisei.pages.dev", "http://localhost:5173"], // 本番と開発環境のURL
-    allowHeaders: ["X-Custom-Header", "Upgrade-Insecure-Requests"],
+    origin: "https://taisei.pages.dev",
     allowMethods: ["POST", "GET", "OPTIONS"],
+    allowHeaders: [
+      "X-Custom-Header",
+      "Upgrade-Insecure-Requests",
+      "Content-Type", // 追加
+      "Authorization", // 追加（必要なら）
+    ],
     exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
+    credentials: true, // `credentials: "include"` を使うために必要
     maxAge: 600,
-    credentials: true,
   })
 );
+app.use("*", async (c, next) => {
+  c.header("Cache-Control", "no-store");
+  await next();
+});
 
 app.get("/list", async (c) => {
   const kv = c.env.mydb;
